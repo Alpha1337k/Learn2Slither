@@ -1,6 +1,7 @@
 from email.policy import default
 from operator import index
 from random import randint, random
+from re import A
 from typing import Dict, List, Tuple
 from typing_extensions import Self
 from pydantic import ConfigDict, validate_call
@@ -87,9 +88,10 @@ class TrainState:
         self.red_apples = []
         self.green_apples = []
 
-        for _ in range(3):
-            self.__place_apple(BoardPiece.RED)
+        for _ in range(2):
             self.__place_apple(BoardPiece.GREEN)
+        for _ in range(1):
+            self.__place_apple(BoardPiece.RED)
 
         self.snake_length = 3
         self._place_snake()
@@ -206,6 +208,9 @@ class TrainState:
             self.__place_apple(BoardPiece.RED)
             return BoardPiece.RED
 
+        if (pos_x, pos_y) in self.snake_body[1:]:
+            return BoardPiece.SNAKE
+
         return BoardPiece.EMPTY
 
 
@@ -227,49 +232,144 @@ def compress_vision(vision: List[List[BoardPiece]], pos: Tuple[int, int]):
 
     compression = 2
 
-    data = {
-        "wallLeftDist": min(
-            get_distance(vision, -1, False, BoardPiece.WALL), compression
+    data = [
+        (
+            min(
+                get_distance(vision, -1, False, BoardPiece.WALL),
+                get_distance(vision, -1, False, BoardPiece.SNAKE),
+                compression,
+            ),  # deathLeftDist
+            min(
+                get_distance(vision, 1, False, BoardPiece.WALL),
+                get_distance(vision, 1, False, BoardPiece.SNAKE),
+                compression,
+            ),  # deathRightDist
+            min(
+                get_distance(vision, -1, True, BoardPiece.WALL),
+                get_distance(vision, -1, True, BoardPiece.SNAKE),
+                compression,
+            ),  # deathUpDist
+            min(
+                get_distance(vision, 1, True, BoardPiece.WALL),
+                get_distance(vision, 1, True, BoardPiece.SNAKE),
+                compression,
+            ),  # deathDownDist
         ),
-        "wallRightDist": min(
-            get_distance(vision, 1, False, BoardPiece.WALL), compression
+        (
+            min(
+                get_distance(vision, -1, False, BoardPiece.GREEN), compression
+            ),  # greenLeftDist
+            min(
+                get_distance(vision, 1, False, BoardPiece.GREEN), compression
+            ),  # greenRightDist
+            min(
+                get_distance(vision, -1, True, BoardPiece.GREEN), compression
+            ),  # greenUpDist
+            min(
+                get_distance(vision, 1, True, BoardPiece.GREEN), compression
+            ),  # greenDownDist
         ),
-        "wallUpDist": min(get_distance(vision, -1, True, BoardPiece.WALL), compression),
-        "wallDownDist": min(
-            get_distance(vision, 1, True, BoardPiece.WALL), compression
+        (
+            min(
+                get_distance(vision, -1, False, BoardPiece.RED), compression
+            ),  # redLeftDist
+            min(
+                get_distance(vision, 1, False, BoardPiece.RED), compression
+            ),  # redRightDist
+            min(
+                get_distance(vision, -1, True, BoardPiece.RED), compression
+            ),  # redUpDist
+            min(
+                get_distance(vision, 1, True, BoardPiece.RED), compression
+            ),  # redDownDist
         ),
-        "greenLeftDist": min(
-            get_distance(vision, -1, False, BoardPiece.GREEN), compression
-        ),
-        "greenRightDist": min(
-            get_distance(vision, 1, False, BoardPiece.GREEN), compression
-        ),
-        "greenUpDist": min(
-            get_distance(vision, -1, True, BoardPiece.GREEN), compression
-        ),
-        "greenDownDist": min(
-            get_distance(vision, 1, True, BoardPiece.GREEN), compression
-        ),
-        "redLeftDist": min(
-            get_distance(vision, -1, False, BoardPiece.RED), compression
-        ),
-        "redRightDist": min(
-            get_distance(vision, 1, False, BoardPiece.RED), compression
-        ),
-        "redUpDist": min(get_distance(vision, -1, True, BoardPiece.RED), compression),
-        "redDownDist": min(get_distance(vision, 1, True, BoardPiece.RED), compression),
-        # "snakeLeftDist": min(get_distance(vision, -1, False, BoardPiece.SNAKE), compression),
-        # "snakeRightDist": min(get_distance(vision, 1, False, BoardPiece.SNAKE), compression),
-        # "snakeUpDist": min(get_distance(vision, -1, True, BoardPiece.SNAKE), compression),
-        # "snakeDownDist": min(get_distance(vision, 1, True, BoardPiece.SNAKE), compression),
-    }
+    ]
 
     return data
 
 
+class QTable:
+    def __init__(self, len=3):
+        self.Q_Table = [{} for _ in range(len)]
+        self.exploration_prob = 0.2
+        self.learning_rate = 0.2
+        self.discount_factor = 0.85
+
+    def __get_action(self, table: Dict, state: Tuple):
+        if state not in table:
+            table[state] = np.zeros(4)
+
+        action = -1
+
+        sorted_options = np.argsort(table[state])
+
+        if np.random.rand() < self.exploration_prob:
+            action = sorted_options[randint(0, 2)]
+            print("Random!")
+        else:
+            action = int(np.argmax(table[state]))
+
+        return table[state]
+
+    def get_weights(self, state: Tuple[int, int], table_idx: int) -> List[float]:
+        if state not in self.Q_Table[table_idx]:
+            self.Q_Table[table_idx][tuple(state)] = np.zeros(4)
+
+        return self.Q_Table[table_idx][tuple(state)]
+
+    def get_action(self, states: List[Tuple]) -> int:
+        final_state = []
+
+        for table, state in zip(self.Q_Table, states):
+            final_state.append(self.__get_action(table, state))
+
+        sum_state = np.sum(final_state, axis=0)
+
+        sorted_options = np.argsort(sum_state)
+
+        if np.random.rand() < self.exploration_prob:
+            action = sorted_options[randint(0, 2)]
+            print("Random!")
+        else:
+            action = int(np.argmax(sum_state))
+
+        print(f"Action: {final_state} = {sum_state} = {action}")
+
+        return action
+
+    def set_reward(
+        self,
+        states: List[Tuple],
+        new_states: List[Tuple] | None,
+        action: int,
+        reward: float,
+        stopped: bool,
+    ):
+        def __calc_reward(table: Dict, state: Tuple, table_idx: int) -> float:
+            if stopped:
+                score = (1 - self.learning_rate) * table[state][
+                    action
+                ] + self.learning_rate * reward
+            else:
+                assert new_states is not None
+
+                new_state_scores = self.get_weights(new_states[table_idx], table_idx)
+
+                score = (1 - self.learning_rate) * table[state][
+                    action
+                ] + self.learning_rate * (
+                    reward + self.discount_factor * np.max(new_state_scores)
+                )
+
+            return score
+
+        for i, (table, state) in enumerate(zip(self.Q_Table, states)):
+            table[state][action] = __calc_reward(table, state, i)
+
+
 @validate_call(config=model_config)
 def train_model(epochs: int, visual: bool):
-    Q_table = {}
+    tables = QTable(3)
     learning_rate = 0.8
     discount_factor = 0.85
     exploration_prob = 0.2
@@ -283,6 +383,9 @@ def train_model(epochs: int, visual: bool):
     # print(compress_vision(state.get_snake_vision(), state.snake_body[0]))
     np.set_printoptions(linewidth=np.inf)
 
+    max_len = 0
+    max_steps = 0
+
     for epoch in range(epochs):
         print("--------")
         state = TrainState()
@@ -290,28 +393,19 @@ def train_model(epochs: int, visual: bool):
         need_stop = False
         step = 0
 
-        while need_stop == False:
-            assert len(state.green_apples) == 3
-            assert len(state.red_apples) == 3
+        while need_stop == False and step < 1000:
+            assert len(state.green_apples) == 2
+            assert len(state.red_apples) == 1
 
             current_values = compress_vision(
                 state.get_snake_vision(), state.snake_body[0]
             )
 
+            print(current_values)
+
             print(print_snake_vision(state.get_snake_vision(), state.snake_body[0]))
 
-            current_state = list(current_values.values())
-
-            if tuple(current_state) not in Q_table:
-                Q_table[tuple(current_state)] = np.zeros(4)
-
-            print(current_values, Q_table[tuple(current_state)])
-
-            if np.random.rand() < exploration_prob:
-                action = randint(0, 3)
-                print("Random!")
-            else:
-                action = int(np.argmax(Q_table[tuple(current_state)]))
+            action = tables.get_action(current_values)
 
             reward = 0
             result = state.move_snake(Direction(action))
@@ -324,46 +418,36 @@ def train_model(epochs: int, visual: bool):
                     reward = -10
                     need_stop = True
                 case BoardPiece.GREEN:
-                    reward = 10
+                    reward = 12
                     state.snake_length += 1
                     state.snake_body.append(state.snake_body[-1])
                 case BoardPiece.RED:
-                    reward = -3
+                    reward = -4
                     state.snake_length -= 1
                     state.snake_body.pop(-1)
                     if len(state.snake_body) == 0:
                         need_stop = True
                         reward = -10
                 case BoardPiece.EMPTY:
-                    reward = 0.1
+                    reward = -0.1
 
-            if len(state.snake_body) == 10:
-                need_stop = True
-                reward = 10
-                print("DING DING IDNG ")
-                exit(1)
+            # if len(state.snake_body) == 10:
+            #     need_stop = True
+            #     reward = 10
+            #     print("DING DING DING")
+            #     exit(1)
+
+            max_len = max(max_len, len(state.snake_body))
+            max_steps = max(max_steps, step)
 
             if need_stop:
-                score = (1 - learning_rate) * Q_table[tuple(current_state)][
-                    action
-                ] + learning_rate * reward
-            else:
-                new_state = list(
-                    compress_vision(
-                        state.get_snake_vision(), state.snake_body[0]
-                    ).values()
-                )
-                if tuple(new_state) not in Q_table:
-                    Q_table[tuple(new_state)] = np.zeros(4)
+                tables.set_reward(current_values, None, action, reward, need_stop)
+                break
 
-                score = (1 - learning_rate) * Q_table[tuple(current_state)][
-                    action
-                ] + learning_rate * (
-                    reward + discount_factor * np.max(Q_table[tuple(new_state)])
-                )
+            next_values = compress_vision(state.get_snake_vision(), state.snake_body[0])
 
-            print(step, len(state.snake_body), Direction(action), need_stop)
-
-            Q_table[tuple(current_state)][action] = score
+            tables.set_reward(current_values, next_values, action, reward, need_stop)
 
             step += 1
+
+    print(max_len, max_steps)
