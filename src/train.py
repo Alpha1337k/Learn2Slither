@@ -65,18 +65,38 @@ class TrainState:
     red_apples: List[Tuple[int, int]]
     green_apples: List[Tuple[int, int]]
 
+    def __place_apple(self, color: BoardPiece):
+        while True:
+            pos_x = randint(0, 9)
+            pos_y = randint(0, 9)
+
+            if (
+                (pos_x, pos_y) not in self.snake_body
+                and (pos_x, pos_y) not in self.red_apples
+                and (pos_x, pos_y) not in self.green_apples
+            ):
+                if color == BoardPiece.RED:
+                    self.red_apples.append((pos_x, pos_y))
+                else:
+                    self.green_apples.append((pos_x, pos_y))
+                break
+
     def __init__(self):
         self.board = [[BoardPiece.EMPTY] * 10] * 10
         self.snake_body = []
         self.red_apples = []
         self.green_apples = []
 
+        for _ in range(3):
+            self.__place_apple(BoardPiece.RED)
+            self.__place_apple(BoardPiece.GREEN)
+
         self.snake_length = 3
         self._place_snake()
 
     def _place_snake(self):
-        pos_x = randint(0, 9)
-        pos_y = randint(0, 9)
+        pos_x = randint(3, 6)
+        pos_y = randint(3, 6)
 
         self.snake_body.append((pos_x, pos_y))
         i = 0
@@ -144,8 +164,10 @@ class TrainState:
         return [[x.value for x in x_vision], [y.value for y in y_vision]]
 
     def move_snake(self, direction: Direction) -> BoardPiece:
-        self.snake_body.pop(-1)
+        assert len(self.snake_body) > 0
+
         pos_x, pos_y = self.snake_body[0]
+        self.snake_body.pop(-1)
 
         assert 0 <= pos_x <= 9
         assert 0 <= pos_y <= 9
@@ -167,16 +189,22 @@ class TrainState:
                 if pos_x - 1 < 0:
                     return BoardPiece.WALL
                 self.snake_body.insert(0, (pos_x - 1, pos_y))
+            case _:
+                raise ValueError("Invalid direction")
+
+        assert len(self.snake_body) > 0
 
         pos_x, pos_y = self.snake_body[0]
 
-        # if (pos_x, pos_y) in self.green_apples:
-        #     self.green_apples.remove((pos_x, pos_y))
-        #     return BoardPiece.GREEN
+        if (pos_x, pos_y) in self.green_apples:
+            self.green_apples.remove((pos_x, pos_y))
+            self.__place_apple(BoardPiece.GREEN)
+            return BoardPiece.GREEN
 
-        # if (pos_x, pos_y) in self.red_apples:
-        #     self.red_apples.remove((pos_x, pos_y))
-        #     return BoardPiece.RED
+        if (pos_x, pos_y) in self.red_apples:
+            self.red_apples.remove((pos_x, pos_y))
+            self.__place_apple(BoardPiece.RED)
+            return BoardPiece.RED
 
         return BoardPiece.EMPTY
 
@@ -195,25 +223,45 @@ def compress_vision(vision: List[List[BoardPiece]], pos: Tuple[int, int]):
             if arr_to_check[check_val] == item:
                 return distance
             distance += 1
-        return -1
+        return 0
+
+    compression = 2
 
     data = {
-        "wallLeftDist": min(get_distance(vision, -1, False, BoardPiece.WALL), 4),
-        "wallRightDist": min(get_distance(vision, 1, False, BoardPiece.WALL), 4),
-        "wallUpDist": min(get_distance(vision, -1, True, BoardPiece.WALL), 4),
-        "wallDownDist": min(get_distance(vision, 1, True, BoardPiece.WALL), 4),
-        # "greenLeftDist": get_distance(vision, -1, False, BoardPiece.GREEN),
-        # "greenRightDist": get_distance(vision, 1, False, BoardPiece.GREEN),
-        # "greenUpDist": get_distance(vision, -1, True, BoardPiece.GREEN),
-        # "greenDownDist": get_distance(vision, 1, True, BoardPiece.GREEN),
-        # "redLeftDist": get_distance(vision, -1, False, BoardPiece.RED),
-        # "redRightDist": get_distance(vision, 1, False, BoardPiece.RED),
-        # "redUpDist": get_distance(vision, -1, True, BoardPiece.RED),
-        # "redDownDist": get_distance(vision, 1, True, BoardPiece.RED),
-        # "snakeLeftDist": get_distance(vision, -1, False, BoardPiece.SNAKE),
-        # "snakeRightDist": get_distance(vision, 1, False, BoardPiece.SNAKE),
-        # "snakeUpDist": get_distance(vision, -1, True, BoardPiece.SNAKE),
-        # "snakeDownDist": get_distance(vision, 1, True, BoardPiece.SNAKE),
+        "wallLeftDist": min(
+            get_distance(vision, -1, False, BoardPiece.WALL), compression
+        ),
+        "wallRightDist": min(
+            get_distance(vision, 1, False, BoardPiece.WALL), compression
+        ),
+        "wallUpDist": min(get_distance(vision, -1, True, BoardPiece.WALL), compression),
+        "wallDownDist": min(
+            get_distance(vision, 1, True, BoardPiece.WALL), compression
+        ),
+        "greenLeftDist": min(
+            get_distance(vision, -1, False, BoardPiece.GREEN), compression
+        ),
+        "greenRightDist": min(
+            get_distance(vision, 1, False, BoardPiece.GREEN), compression
+        ),
+        "greenUpDist": min(
+            get_distance(vision, -1, True, BoardPiece.GREEN), compression
+        ),
+        "greenDownDist": min(
+            get_distance(vision, 1, True, BoardPiece.GREEN), compression
+        ),
+        "redLeftDist": min(
+            get_distance(vision, -1, False, BoardPiece.RED), compression
+        ),
+        "redRightDist": min(
+            get_distance(vision, 1, False, BoardPiece.RED), compression
+        ),
+        "redUpDist": min(get_distance(vision, -1, True, BoardPiece.RED), compression),
+        "redDownDist": min(get_distance(vision, 1, True, BoardPiece.RED), compression),
+        # "snakeLeftDist": min(get_distance(vision, -1, False, BoardPiece.SNAKE), compression),
+        # "snakeRightDist": min(get_distance(vision, 1, False, BoardPiece.SNAKE), compression),
+        # "snakeUpDist": min(get_distance(vision, -1, True, BoardPiece.SNAKE), compression),
+        # "snakeDownDist": min(get_distance(vision, 1, True, BoardPiece.SNAKE), compression),
     }
 
     return data
@@ -223,7 +271,7 @@ def compress_vision(vision: List[List[BoardPiece]], pos: Tuple[int, int]):
 def train_model(epochs: int, visual: bool):
     Q_table = {}
     learning_rate = 0.8
-    discount_factor = 0.95
+    discount_factor = 0.85
     exploration_prob = 0.2
 
     # state = TrainState()
@@ -243,6 +291,9 @@ def train_model(epochs: int, visual: bool):
         step = 0
 
         while need_stop == False:
+            assert len(state.green_apples) == 3
+            assert len(state.red_apples) == 3
+
             current_values = compress_vision(
                 state.get_snake_vision(), state.snake_body[0]
             )
@@ -262,42 +313,54 @@ def train_model(epochs: int, visual: bool):
             else:
                 action = int(np.argmax(Q_table[tuple(current_state)]))
 
-            result = state.move_snake(Direction(action))
-            new_state = list(
-                compress_vision(state.get_snake_vision(), state.snake_body[0]).values()
-            )
-
-            if tuple(new_state) not in Q_table:
-                Q_table[tuple(new_state)] = np.zeros(4)
-
             reward = 0
+            result = state.move_snake(Direction(action))
 
             match result:
                 case BoardPiece.WALL:
                     reward = -10
                     need_stop = True
-                # case BoardPiece.SNAKE:
-                #     reward = -10
-                #     need_stop = True
-                # case BoardPiece.GREEN:
-                #     reward = 1
-                #     state.snake_length += 1
-                #     state.snake_body.append(state.snake_body[-1])
-                # case BoardPiece.RED:
-                #     reward = -0.5
-                #     state.snake_length -= 1
-                #     state.snake_body.pop(-1)
-                #     if len(state.snake_body) == 0:
-                #         need_stop = True
-                #         reward = -10
+                case BoardPiece.SNAKE:
+                    reward = -10
+                    need_stop = True
+                case BoardPiece.GREEN:
+                    reward = 10
+                    state.snake_length += 1
+                    state.snake_body.append(state.snake_body[-1])
+                case BoardPiece.RED:
+                    reward = -3
+                    state.snake_length -= 1
+                    state.snake_body.pop(-1)
+                    if len(state.snake_body) == 0:
+                        need_stop = True
+                        reward = -10
                 case BoardPiece.EMPTY:
                     reward = 0.1
 
-            score = (1 - learning_rate) * Q_table[tuple(current_state)][
-                action
-            ] + learning_rate * (
-                reward + discount_factor * np.max(Q_table[tuple(new_state)])
-            )
+            if len(state.snake_body) == 10:
+                need_stop = True
+                reward = 10
+                print("DING DING IDNG ")
+                exit(1)
+
+            if need_stop:
+                score = (1 - learning_rate) * Q_table[tuple(current_state)][
+                    action
+                ] + learning_rate * reward
+            else:
+                new_state = list(
+                    compress_vision(
+                        state.get_snake_vision(), state.snake_body[0]
+                    ).values()
+                )
+                if tuple(new_state) not in Q_table:
+                    Q_table[tuple(new_state)] = np.zeros(4)
+
+                score = (1 - learning_rate) * Q_table[tuple(current_state)][
+                    action
+                ] + learning_rate * (
+                    reward + discount_factor * np.max(Q_table[tuple(new_state)])
+                )
 
             print(step, len(state.snake_body), Direction(action), need_stop)
 
