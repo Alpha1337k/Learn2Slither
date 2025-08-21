@@ -1,4 +1,5 @@
 from email.policy import default
+from itertools import count
 from operator import index
 from random import randint, random
 from re import A
@@ -232,148 +233,109 @@ def compress_vision(vision: List[List[BoardPiece]], pos: Tuple[int, int]):
 
     compression = 2
 
-    data = [
-        (
-            min(
-                get_distance(vision, -1, True, BoardPiece.WALL) or compression,
-                get_distance(vision, -1, True, BoardPiece.SNAKE) or compression,
-                get_distance(vision, -1, True, BoardPiece.RED) or compression,
-            ),  # deathUpDist
-            min(
-                get_distance(vision, 1, False, BoardPiece.WALL) or compression,
-                get_distance(vision, 1, False, BoardPiece.SNAKE) or compression,
-                get_distance(vision, 1, False, BoardPiece.RED) or compression,
-            ),  # deathRightDist
-            min(
-                get_distance(vision, 1, True, BoardPiece.WALL) or compression,
-                get_distance(vision, 1, True, BoardPiece.SNAKE) or compression,
-                get_distance(vision, 1, True, BoardPiece.RED) or compression,
-            ),  # deathDownDist
-            min(
-                get_distance(vision, -1, False, BoardPiece.WALL) or compression,
-                get_distance(vision, -1, False, BoardPiece.SNAKE) or compression,
-                get_distance(vision, -1, False, BoardPiece.RED) or compression,
-            ),  # deathLeftDist
-        ),
-        (
-            min(
-                get_distance(vision, -1, True, BoardPiece.GREEN), 1 # compression
-            ),  # greenUpDist
-            min(
-                get_distance(vision, 1, False, BoardPiece.GREEN), 1 # compression
-            ),  # greenRightDist
-            min(
-                get_distance(vision, 1, True, BoardPiece.GREEN), 1 # compression
-            ),  # greenDownDist
-            min(
-                get_distance(vision, -1, False, BoardPiece.GREEN), 1 # compression
-            ),  # greenLeftDist
-        ),
-        # (
-        #     min(
-        #         get_distance(vision, -1, True, BoardPiece.RED), compression
-        #     ),  # redUpDist
-        #     min(
-        #         get_distance(vision, 1, False, BoardPiece.RED), compression
-        #     ),  # redRightDist
-        #     min(
-        #         get_distance(vision, 1, True, BoardPiece.RED), compression
-        #     ),  # redDownDist
-        #     min(
-        #         get_distance(vision, -1, False, BoardPiece.RED), compression
-        #     ),  # redLeftDist
-        # ),
+    # states:
+    # deathFar = 2
+    # deathClose = 1
+    # green = 0
+
+    directions = [
+        (-1, True),  # up
+        (1, False),  # right
+        (1, True),  # down
+        (-1, False),  # left
     ]
 
-    # data = [
-    #     tuple(1 if x > 1 and i != 0 else x for x in group)
-    #     for i, group in enumerate(data)
-    # ]
+    data = []
 
-    # data = [
-    #     1 if x > 1 and i > 3 else x for i, group in enumerate(data) for x in data
-    # ]
+    for (direction, is_vertical) in directions:
+        dir_score = min(
+                get_distance(vision, direction, is_vertical, BoardPiece.WALL) or compression,
+                get_distance(vision, direction, is_vertical, BoardPiece.SNAKE) or compression,
+                get_distance(vision, direction, is_vertical, BoardPiece.RED) or compression,
+            )
+        if dir_score > 1 and get_distance(vision, direction, is_vertical, BoardPiece.GREEN) > 0:
+            dir_score = 0
+        data.append(dir_score)
 
-    return data
+    return tuple(data)
 
 
 class QTable:
     def __init__(self, len=3):
-        self.Q_Table = [{} for _ in range(len)]
+        self.Q_Table = {}
         self.exploration_prob = 0.2
         self.learning_rate = 0.2
         self.discount_factor = 0.85
 
-    def __get_action(self, table: Dict, state: Tuple):
-        if state not in table:
-            table[state] = np.zeros(4)
+    def __rotate_state(self, state: Tuple):
+        return state
+        sort_count = []
 
-        action = -1
+        for i in range(4):
+            rotated = state[i:] + state[:i]
+            prev = rotated[0]
+            count = 0
+            for j in range(1, len(rotated)):
+                if rotated[j] >= prev:
+                    count += 1
+                    prev = rotated[j]
+                else:
+                    break
+            sort_count.append((count, i, rotated))
 
-        sorted_options = np.argsort(table[state])
+        best_rotation = max(sort_count, key=lambda x: x[0])
 
-        if np.random.rand() < self.exploration_prob:
-            action = sorted_options[randint(0, 2)]
-            print("Random!")
-        else:
-            action = int(np.argmax(table[state]))
+        return tuple(best_rotation[2])
 
-        return table[state]
+    def get_weights(self, state: Tuple[int, int]) -> List[float]:
+        rotated_state = self.__rotate_state(state)
+        if rotated_state not in self.Q_Table:
+            self.Q_Table[rotated_state] = np.zeros(4)
 
-    def get_weights(self, state: Tuple[int, int], table_idx: int) -> List[float]:
-        if state not in self.Q_Table[table_idx]:
-            self.Q_Table[table_idx][tuple(state)] = np.zeros(4)
+        return self.Q_Table[rotated_state]
 
-        return self.Q_Table[table_idx][tuple(state)]
-
-    def get_action(self, states: List[Tuple]) -> int:
-        final_state = []
-
-        for table, state in zip(self.Q_Table, states):
-            final_state.append(self.__get_action(table, state))
-
-        sum_state = np.sum(final_state, axis=0)
-
-        sorted_options = np.argsort(sum_state)
+    def get_action(self, state: Tuple) -> int:
+        weights = self.get_weights(state)
+        sorted_options = np.argsort(weights)
 
         if np.random.rand() < self.exploration_prob:
             action = sorted_options[randint(0, 3)]
             print("Random!")
         else:
-            action = int(np.argmax(sum_state))
+            action = int(np.argmax(weights))
 
-        print(f"Action: {final_state} = {sum_state} = {Direction(action)}")
+        print(f"Action: {state} = {weights} = {Direction(action)}")
 
         return action
 
     def set_reward(
         self,
-        states: List[Tuple],
-        new_states: List[Tuple] | None,
+        state: Tuple,
+        new_state: Tuple | None,
         action: int,
         reward: float,
         stopped: bool,
     ):
-        def __calc_reward(table: Dict, state: Tuple, table_idx: int) -> float:
-            if stopped:
-                score = (1 - self.learning_rate) * table[state][
-                    action
-                ] + self.learning_rate * reward
-            else:
-                assert new_states is not None
+        rotated_state = self.__rotate_state(state)
+        if rotated_state not in self.Q_Table:
+            self.Q_Table[rotated_state] = np.zeros(4)
+            
+        if stopped:
+            score = (1 - self.learning_rate) * self.Q_Table[rotated_state][
+                action
+            ] + self.learning_rate * reward
+        else:
+            assert new_state is not None
 
-                new_state_scores = self.get_weights(new_states[table_idx], table_idx)
+            new_state_scores = self.get_weights(new_state)
 
-                score = (1 - self.learning_rate) * table[state][
-                    action
-                ] + self.learning_rate * (
-                    reward + self.discount_factor * np.max(new_state_scores)
-                )
+            score = (1 - self.learning_rate) * self.Q_Table[rotated_state][
+                action
+            ] + self.learning_rate * (
+                reward + self.discount_factor * np.max(new_state_scores)
+            )
 
-            return score
-
-        for i, (table, state) in enumerate(zip(self.Q_Table, states)):
-            table[state][action] = __calc_reward(table, state, i)
+        self.Q_Table[rotated_state][action] = score
 
 
 @validate_call(config=model_config)
@@ -413,7 +375,7 @@ def train_model(epochs: int, visual: bool):
                 state.get_snake_vision(), state.snake_body[0]
             )
 
-            print(print_snake_vision(state.get_snake_vision(), state.snake_body[0]))
+            print_snake_vision(state.get_snake_vision(), state.snake_body[0])
             print(current_state)
 
             max_steps = max(max_steps, step)
@@ -443,7 +405,7 @@ def train_model(epochs: int, visual: bool):
                         need_stop = True
                         reward = -10
                 case BoardPiece.EMPTY:
-                    reward = -0.1
+                    reward = -0.2
 
             # if len(state.snake_body) == 10:
             #     need_stop = True
