@@ -227,42 +227,63 @@ def compress_vision(vision: List[List[BoardPiece]], pos: Tuple[int, int]):
 
     compression = 2
 
-    data = {
-        "wallLeftDist": min(
-            get_distance(vision, -1, False, BoardPiece.WALL), compression
+    data = [
+        (
+            min(
+                get_distance(vision, -1, True, BoardPiece.WALL),
+                get_distance(vision, -1, True, BoardPiece.SNAKE),
+                compression,
+            ),  # deathUpDist
+            min(
+                get_distance(vision, 1, False, BoardPiece.WALL),
+                get_distance(vision, 1, False, BoardPiece.SNAKE),
+                compression,
+            ),  # deathRightDist
+            min(
+                get_distance(vision, 1, True, BoardPiece.WALL),
+                get_distance(vision, 1, True, BoardPiece.SNAKE),
+                compression,
+            ),  # deathDownDist
+            min(
+                get_distance(vision, -1, False, BoardPiece.WALL),
+                get_distance(vision, -1, False, BoardPiece.SNAKE),
+                compression,
+            ),  # deathLeftDist
         ),
-        "wallRightDist": min(
-            get_distance(vision, 1, False, BoardPiece.WALL), compression
+        (
+            min(
+                get_distance(vision, -1, True, BoardPiece.GREEN), compression
+            ),  # greenUpDist
+            min(
+                get_distance(vision, 1, True, BoardPiece.GREEN), compression
+            ),  # greenDownDist
+            min(
+                get_distance(vision, 1, False, BoardPiece.GREEN), compression
+            ),  # greenRightDist
+            min(
+                get_distance(vision, -1, False, BoardPiece.GREEN), compression
+            ),  # greenLeftDist
         ),
-        "wallUpDist": min(get_distance(vision, -1, True, BoardPiece.WALL), compression),
-        "wallDownDist": min(
-            get_distance(vision, 1, True, BoardPiece.WALL), compression
+        (
+            min(
+                get_distance(vision, -1, True, BoardPiece.RED), compression
+            ),  # redUpDist
+            min(
+                get_distance(vision, 1, False, BoardPiece.RED), compression
+            ),  # redRightDist
+            min(
+                get_distance(vision, 1, True, BoardPiece.RED), compression
+            ),  # redDownDist
+            min(
+                get_distance(vision, -1, False, BoardPiece.RED), compression
+            ),  # redLeftDist
         ),
-        "greenLeftDist": min(
-            get_distance(vision, -1, False, BoardPiece.GREEN), compression
-        ),
-        "greenRightDist": min(
-            get_distance(vision, 1, False, BoardPiece.GREEN), compression
-        ),
-        "greenUpDist": min(
-            get_distance(vision, -1, True, BoardPiece.GREEN), compression
-        ),
-        "greenDownDist": min(
-            get_distance(vision, 1, True, BoardPiece.GREEN), compression
-        ),
-        "redLeftDist": min(
-            get_distance(vision, -1, False, BoardPiece.RED), compression
-        ),
-        "redRightDist": min(
-            get_distance(vision, 1, False, BoardPiece.RED), compression
-        ),
-        "redUpDist": min(get_distance(vision, -1, True, BoardPiece.RED), compression),
-        "redDownDist": min(get_distance(vision, 1, True, BoardPiece.RED), compression),
-        # "snakeLeftDist": min(get_distance(vision, -1, False, BoardPiece.SNAKE), compression),
-        # "snakeRightDist": min(get_distance(vision, 1, False, BoardPiece.SNAKE), compression),
-        # "snakeUpDist": min(get_distance(vision, -1, True, BoardPiece.SNAKE), compression),
-        # "snakeDownDist": min(get_distance(vision, 1, True, BoardPiece.SNAKE), compression),
-    }
+    ]
+
+    data = [
+        tuple(1 if x > 1 and i != 0 else x for x in group)
+        for i, group in enumerate(data)
+    ]
 
     return data
 
@@ -273,6 +294,9 @@ def train_model(epochs: int, visual: bool):
     learning_rate = 0.8
     discount_factor = 0.85
     exploration_prob = 0.2
+
+    max_steps = 0
+    max_length = 0
 
     # state = TrainState()
 
@@ -294,18 +318,20 @@ def train_model(epochs: int, visual: bool):
             assert len(state.green_apples) == 3
             assert len(state.red_apples) == 3
 
-            current_values = compress_vision(
+            current_state = compress_vision(
                 state.get_snake_vision(), state.snake_body[0]
             )
 
             print(print_snake_vision(state.get_snake_vision(), state.snake_body[0]))
 
-            current_state = list(current_values.values())
+            max_steps = max(max_steps, step)
+            max_length = max(max_length, len(state.snake_body))
+
 
             if tuple(current_state) not in Q_table:
                 Q_table[tuple(current_state)] = np.zeros(4)
 
-            print(current_values, Q_table[tuple(current_state)])
+            print(current_state, Q_table[tuple(current_state)])
 
             if np.random.rand() < exploration_prob:
                 action = randint(0, 3)
@@ -337,22 +363,21 @@ def train_model(epochs: int, visual: bool):
                 case BoardPiece.EMPTY:
                     reward = 0.1
 
-            if len(state.snake_body) == 10:
-                need_stop = True
-                reward = 10
-                print("DING DING IDNG ")
-                exit(1)
+            # if len(state.snake_body) == 10:
+            #     need_stop = True
+            #     reward = 10
+            #     print("DING DING IDNG ")
+            #     exit(1)
 
             if need_stop:
                 score = (1 - learning_rate) * Q_table[tuple(current_state)][
                     action
                 ] + learning_rate * reward
             else:
-                new_state = list(
-                    compress_vision(
+                new_state = compress_vision(
                         state.get_snake_vision(), state.snake_body[0]
-                    ).values()
-                )
+                    )
+
                 if tuple(new_state) not in Q_table:
                     Q_table[tuple(new_state)] = np.zeros(4)
 
@@ -367,3 +392,4 @@ def train_model(epochs: int, visual: bool):
             Q_table[tuple(current_state)][action] = score
 
             step += 1
+    print(max_length, max_steps)
