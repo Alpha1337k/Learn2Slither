@@ -235,60 +235,60 @@ def compress_vision(vision: List[List[BoardPiece]], pos: Tuple[int, int]):
     data = [
         (
             min(
-                get_distance(vision, -1, True, BoardPiece.WALL),
-                get_distance(vision, -1, True, BoardPiece.SNAKE),
-                compression,
+                get_distance(vision, -1, True, BoardPiece.WALL) or compression,
+                get_distance(vision, -1, True, BoardPiece.SNAKE) or compression,
+                get_distance(vision, -1, True, BoardPiece.RED) or compression,
             ),  # deathUpDist
             min(
-                get_distance(vision, 1, False, BoardPiece.WALL),
-                get_distance(vision, 1, False, BoardPiece.SNAKE),
-                compression,
+                get_distance(vision, 1, False, BoardPiece.WALL) or compression,
+                get_distance(vision, 1, False, BoardPiece.SNAKE) or compression,
+                get_distance(vision, 1, False, BoardPiece.RED) or compression,
             ),  # deathRightDist
             min(
-                get_distance(vision, 1, True, BoardPiece.WALL),
-                get_distance(vision, 1, True, BoardPiece.SNAKE),
-                compression,
+                get_distance(vision, 1, True, BoardPiece.WALL) or compression,
+                get_distance(vision, 1, True, BoardPiece.SNAKE) or compression,
+                get_distance(vision, 1, True, BoardPiece.RED) or compression,
             ),  # deathDownDist
             min(
-                get_distance(vision, -1, False, BoardPiece.WALL),
-                get_distance(vision, -1, False, BoardPiece.SNAKE),
-                compression,
+                get_distance(vision, -1, False, BoardPiece.WALL) or compression,
+                get_distance(vision, -1, False, BoardPiece.SNAKE) or compression,
+                get_distance(vision, -1, False, BoardPiece.RED) or compression,
             ),  # deathLeftDist
         ),
         (
             min(
-                get_distance(vision, -1, True, BoardPiece.GREEN), compression
+                get_distance(vision, -1, True, BoardPiece.GREEN), 1 # compression
             ),  # greenUpDist
             min(
-                get_distance(vision, 1, False, BoardPiece.GREEN), compression
+                get_distance(vision, 1, False, BoardPiece.GREEN), 1 # compression
             ),  # greenRightDist
             min(
-                get_distance(vision, 1, True, BoardPiece.GREEN), compression
+                get_distance(vision, 1, True, BoardPiece.GREEN), 1 # compression
             ),  # greenDownDist
             min(
-                get_distance(vision, -1, False, BoardPiece.GREEN), compression
+                get_distance(vision, -1, False, BoardPiece.GREEN), 1 # compression
             ),  # greenLeftDist
         ),
-        (
-            min(
-                get_distance(vision, -1, True, BoardPiece.RED), compression
-            ),  # redUpDist
-            min(
-                get_distance(vision, 1, False, BoardPiece.RED), compression
-            ),  # redRightDist
-            min(
-                get_distance(vision, 1, True, BoardPiece.RED), compression
-            ),  # redDownDist
-            min(
-                get_distance(vision, -1, False, BoardPiece.RED), compression
-            ),  # redLeftDist
-        ),
+        # (
+        #     min(
+        #         get_distance(vision, -1, True, BoardPiece.RED), compression
+        #     ),  # redUpDist
+        #     min(
+        #         get_distance(vision, 1, False, BoardPiece.RED), compression
+        #     ),  # redRightDist
+        #     min(
+        #         get_distance(vision, 1, True, BoardPiece.RED), compression
+        #     ),  # redDownDist
+        #     min(
+        #         get_distance(vision, -1, False, BoardPiece.RED), compression
+        #     ),  # redLeftDist
+        # ),
     ]
 
-    data = [
-        tuple(1 if x > 1 and i != 0 else x for x in group)
-        for i, group in enumerate(data)
-    ]
+    # data = [
+    #     tuple(1 if x > 1 and i != 0 else x for x in group)
+    #     for i, group in enumerate(data)
+    # ]
 
     # data = [
     #     1 if x > 1 and i > 3 else x for i, group in enumerate(data) for x in data
