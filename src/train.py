@@ -260,11 +260,11 @@ def compress_vision(vision: List[List[BoardPiece]], pos: Tuple[int, int]):
                 get_distance(vision, -1, True, BoardPiece.GREEN), compression
             ),  # greenUpDist
             min(
-                get_distance(vision, 1, True, BoardPiece.GREEN), compression
-            ),  # greenDownDist
-            min(
                 get_distance(vision, 1, False, BoardPiece.GREEN), compression
             ),  # greenRightDist
+            min(
+                get_distance(vision, 1, True, BoardPiece.GREEN), compression
+            ),  # greenDownDist
             min(
                 get_distance(vision, -1, False, BoardPiece.GREEN), compression
             ),  # greenLeftDist
@@ -289,6 +289,10 @@ def compress_vision(vision: List[List[BoardPiece]], pos: Tuple[int, int]):
         tuple(1 if x > 1 and i != 0 else x for x in group)
         for i, group in enumerate(data)
     ]
+
+    # data = [
+    #     1 if x > 1 and i > 3 else x for i, group in enumerate(data) for x in data
+    # ]
 
     return data
 
@@ -333,12 +337,12 @@ class QTable:
         sorted_options = np.argsort(sum_state)
 
         if np.random.rand() < self.exploration_prob:
-            action = sorted_options[randint(0, 2)]
+            action = sorted_options[randint(0, 3)]
             print("Random!")
         else:
             action = int(np.argmax(sum_state))
 
-        print(f"Action: {final_state} = {sum_state} = {action}")
+        print(f"Action: {final_state} = {sum_state} = {Direction(action)}")
 
         return action
 
@@ -410,18 +414,12 @@ def train_model(epochs: int, visual: bool):
             )
 
             print(print_snake_vision(state.get_snake_vision(), state.snake_body[0]))
+            print(current_state)
 
             max_steps = max(max_steps, step)
             max_length = max(max_length, len(state.snake_body))
 
-
-            if tuple(current_state) not in Q_table:
-                Q_table[tuple(current_state)] = np.zeros(4)
-
-            print(current_state, Q_table[tuple(current_state)])
-
-
-            action = tables.get_action(current_values)
+            action = tables.get_action(current_state)
 
             reward = 0
             result = state.move_snake(Direction(action))
@@ -454,25 +452,12 @@ def train_model(epochs: int, visual: bool):
             #     exit(1)
 
             if need_stop:
-                score = (1 - learning_rate) * Q_table[tuple(current_state)][
-                    action
-                ] + learning_rate * reward
-            else:
-                new_state = compress_vision(
-                        state.get_snake_vision(), state.snake_body[0]
-                    )
-
-                if tuple(new_state) not in Q_table:
-                    Q_table[tuple(new_state)] = np.zeros(4)
-
-
-            if need_stop:
-                tables.set_reward(current_values, None, action, reward, need_stop)
+                tables.set_reward(current_state, None, action, reward, need_stop)
                 break
 
             next_values = compress_vision(state.get_snake_vision(), state.snake_body[0])
 
-            tables.set_reward(current_values, next_values, action, reward, need_stop)
+            tables.set_reward(current_state, next_values, action, reward, need_stop)
 
             step += 1
     print(max_length, max_steps)
