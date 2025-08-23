@@ -1,6 +1,6 @@
 import json
 from random import randint
-from typing import List, Tuple
+from typing import IO, List, Tuple
 
 import numpy as np
 from .train_state import BoardPiece, TrainState, Direction
@@ -9,8 +9,8 @@ from .train_state import BoardPiece, TrainState, Direction
 class QTableRunner:
     def __init__(self, len=3):
         self.Q_Table = {}
-        self.exploration_prob = 0.2
-        self.learning_rate = 0.6
+        self.exploration_prob = 0.05
+        self.learning_rate = 0.7
         self.discount_factor = 0.8
 
     def save_model(self, filename: str):
@@ -19,9 +19,9 @@ class QTableRunner:
                 {str(k): v.tolist() for k, v in self.Q_Table.items()}, f, indent=4
             )
 
-    def load_model(self, filename: str):
-        with open(filename, "r") as f:
-            data = json.load(f)
+    def load_model(self, file: IO):
+        data = json.load(file)
+        self.Q_Table = {eval(k): np.array(v) for k, v in data.items()}
 
     def __rotate_state(self, state: Tuple):
         return state
@@ -57,7 +57,7 @@ class QTableRunner:
         if 0.0 in weights:
             action = np.where(weights == 0.0)[0][0]
         elif np.random.rand() < self.exploration_prob:
-            action = sorted_options[randint(0, 3)]
+            action = sorted_options[randint(1, 2)]
             print("Random!")
         else:
             action = int(np.argmax(weights))

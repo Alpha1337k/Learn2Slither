@@ -71,4 +71,4 @@ def train_model(epochs: int, visual: bool):
             step += 1
     print(max_length, max_steps)
 
-    table.save_model(f"model_{epochs}.json")
+    table.save_model(f"models/model_{epochs}.json")

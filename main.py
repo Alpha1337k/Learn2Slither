@@ -1,4 +1,5 @@
 import argparse
+from src.play import play
 from src.train import train_model
 
 
@@ -29,6 +30,8 @@ def main():
     match args.command:
         case "train":
             train_model(args.sessions, args.visual)
+        case "play":
+            play(args.model, args.visual)
 
 
 if __name__ == "__main__":

@@ -7,7 +7,7 @@ class GameGUI:
         self.size = size
         self.cell_size = 40
         self.root = tk.Tk()
-        self.root.title("Slither Game")
+        self.root.title("Learn2Slither")
 
         canvas_size = size * self.cell_size
         self.canvas = Canvas(
@@ -24,7 +24,7 @@ class GameGUI:
             self.canvas.create_line(x, 0, x, self.size * self.cell_size, fill="gray")
             self.canvas.create_line(0, x, self.size * self.cell_size, x, fill="gray")
 
-    def fill_cell(self, row, col, color="black"):
+    def fill_cell(self, col, row, color="black"):
         if 0 <= row < self.size and 0 <= col < self.size:
             x1 = col * self.cell_size + 1
             y1 = row * self.cell_size + 1
@@ -34,7 +34,7 @@ class GameGUI:
             self.canvas.create_rectangle(x1, y1, x2, y2, fill=color, outline="")
             self.grid[row][col] = 1
 
-    def clear_cell(self, row, col):
+    def clear_cell(self, col, row):
         if 0 <= row < self.size and 0 <= col < self.size:
             x1 = col * self.cell_size + 1
             y1 = row * self.cell_size + 1
