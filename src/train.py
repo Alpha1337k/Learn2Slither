@@ -97,10 +97,7 @@ async def train_model(epochs: int, visual: bool, board_size: int):
 
     np.set_printoptions(linewidth=np.inf)
 
-    # Start display task
     display_task = asyncio.create_task(start_display(display))
-
-    # Give the GUI time to initialize
     await asyncio.sleep(0.1)
 
     for epoch in range(epochs):

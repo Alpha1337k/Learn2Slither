@@ -1,4 +1,5 @@
 import argparse
+from xmlrpc.client import Boolean
 from src.play import play
 from src.train import train_model
 import asyncio
@@ -19,7 +20,7 @@ async def main():
 
     play_parser = subparsers.add_parser("play", help="Play the game")
     play_parser.add_argument(
-        "--visual", action="store_true", help="Enable visual mode during play"
+        "--visual", default=True, type=Boolean, help="Enable visual mode during play"
     )
     play_parser.add_argument("--size", type=int, help="Size of the board")
     play_parser.add_argument(
@@ -33,7 +34,7 @@ async def main():
         case "train":
             await train_model(args.sessions, args.visual, args.size or 10)
         case "play":
-            play(args.model, args.visual, args.size or 10)
+            await play(args.model, args.visual, args.size or 10)
 
 
 if __name__ == "__main__":

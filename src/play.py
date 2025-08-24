@@ -14,7 +14,7 @@ async def start_display(display: GameGUI):
 
 
 async def play(model, visual: bool, board_size: int = 10):
-    state = TrainState()
+    state = TrainState(board_size)
     table = QTableRunner()
 
     table.load_model(model)
@@ -23,9 +23,11 @@ async def play(model, visual: bool, board_size: int = 10):
     # table.learning_rate = 0.2
     last_move = 0
 
-    display = GameGUI(10)
+    display = GameGUI(board_size)
 
-    display_task = asyncio.create_task(start_display(display))
+    if visual:
+        display_task = asyncio.create_task(start_display(display))
+        await asyncio.sleep(0.1)
 
     while True:
         display.clear_all()

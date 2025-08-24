@@ -147,6 +147,8 @@ class QTableRunner:
                 and get_distance(vision, direction, is_vertical, BoardPiece.GREEN) > 0
             ):
                 dir_score = 0
+            elif dir_score > 1:
+                dir_score = 2
             data.append(dir_score)
 
         return tuple(data)
