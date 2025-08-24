@@ -20,7 +20,9 @@ class BoardPiece(Enum):
     WALL = 6
 
 
-def print_snake_vision(vision: List[List[BoardPiece]], head: Tuple[int, int]):
+def print_snake_vision(
+    vision: List[List[BoardPiece]], head: Tuple[int, int], board_size: int
+):
     def to_print(key):
         char = "??"
         match BoardPiece(key):
@@ -39,10 +41,10 @@ def print_snake_vision(vision: List[List[BoardPiece]], head: Tuple[int, int]):
 
         return char
 
-    for y in range(12):
+    for y in range(board_size + 2):
 
         if y == (head[1] + 1):
-            for x in range(12):
+            for x in range(board_size + 2):
                 print(f"{to_print(vision[0][x])} ", end="")
             print("")
         else:
@@ -50,6 +52,7 @@ def print_snake_vision(vision: List[List[BoardPiece]], head: Tuple[int, int]):
 
 
 class TrainState:
+    board_size: int
     board: List[List[BoardPiece]]
     snake_length: int
     snake_body: List[Tuple[int, int]]
@@ -58,8 +61,8 @@ class TrainState:
 
     def __place_apple(self, color: BoardPiece):
         while True:
-            pos_x = randint(0, 9)
-            pos_y = randint(0, 9)
+            pos_x = randint(1, self.board_size - 2)
+            pos_y = randint(1, self.board_size - 2)
 
             if (
                 (pos_x, pos_y) not in self.snake_body
@@ -72,8 +75,9 @@ class TrainState:
                     self.green_apples.append((pos_x, pos_y))
                 break
 
-    def __init__(self):
-        self.board = [[BoardPiece.EMPTY] * 10] * 10
+    def __init__(self, board_size):
+        self.board_size = board_size
+        self.board = [[BoardPiece.EMPTY] * board_size] * board_size
         self.snake_body = []
         self.red_apples = []
         self.green_apples = []
@@ -87,8 +91,8 @@ class TrainState:
         self._place_snake()
 
     def _place_snake(self):
-        pos_x = randint(3, 6)
-        pos_y = randint(3, 6)
+        pos_x = randint(1, self.board_size - 2)
+        pos_y = randint(1, self.board_size - 2)
 
         self.snake_body.append((pos_x, pos_y))
         i = 0
@@ -125,7 +129,7 @@ class TrainState:
         pos_x, pos_y = self.snake_body[0]
 
         x_vision = [BoardPiece.WALL]
-        for i in range(0, 10):
+        for i in range(0, self.board_size):
             if (i, pos_y) in self.green_apples != -1:
                 x_vision.append(BoardPiece.GREEN)
             elif (i, pos_y) in self.red_apples != -1:
@@ -139,7 +143,7 @@ class TrainState:
         x_vision.append(BoardPiece.WALL)
 
         y_vision = [BoardPiece.WALL]
-        for i in range(0, 10):
+        for i in range(0, self.board_size):
             if (pos_x, i) in self.green_apples != -1:
                 y_vision.append(BoardPiece.GREEN)
             elif (pos_x, i) in self.red_apples != -1:
@@ -161,8 +165,8 @@ class TrainState:
         pos_x, pos_y = self.snake_body[0]
         self.snake_body.pop(-1)
 
-        assert 0 <= pos_x <= 9
-        assert 0 <= pos_y <= 9
+        assert 0 <= pos_x <= self.board_size - 1
+        assert 0 <= pos_y <= self.board_size - 1
 
         match direction:
             case Direction.N:
@@ -170,11 +174,11 @@ class TrainState:
                     return BoardPiece.WALL
                 self.snake_body.insert(0, (pos_x, pos_y - 1))
             case Direction.E:
-                if pos_x + 1 > 9:
+                if pos_x + 1 > self.board_size - 1:
                     return BoardPiece.WALL
                 self.snake_body.insert(0, (pos_x + 1, pos_y))
             case Direction.S:
-                if pos_y + 1 > 9:
+                if pos_y + 1 > self.board_size - 1:
                     return BoardPiece.WALL
                 self.snake_body.insert(0, (pos_x, pos_y + 1))
             case Direction.W:

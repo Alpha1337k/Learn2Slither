@@ -23,8 +23,10 @@ model_config = ConfigDict(arbitrary_types_allowed=True)
 
 
 @validate_call(config=model_config)
-async def run_epoch(visual: bool, display: GameGUI, table: QTableRunner):
-    state = TrainState()
+async def run_epoch(
+    visual: bool, display: GameGUI, table: QTableRunner, board_size: int
+):
+    state = TrainState(board_size)
 
     assert len(state.green_apples) == 2
     assert len(state.red_apples) == 1
@@ -53,7 +55,7 @@ async def run_epoch(visual: bool, display: GameGUI, table: QTableRunner):
         max_steps = max(max_steps, step)
         max_length = max(max_length, len(state.snake_body))
 
-        print_snake_vision(state.get_snake_vision(), state.snake_body[0])
+        print_snake_vision(state.get_snake_vision(), state.snake_body[0], board_size)
 
         action = table.get_action(current_state)
         result = state.move_snake(Direction(action))
@@ -86,9 +88,9 @@ async def start_display(display: GameGUI):
 
 
 @validate_call(config=model_config)
-async def train_model(epochs: int, visual: bool, size: int = 10):
+async def train_model(epochs: int, visual: bool, board_size: int):
     table = QTableRunner(3)
-    display = GameGUI(size)
+    display = GameGUI(board_size)
 
     max_steps = 0
     max_length = 0
@@ -102,8 +104,10 @@ async def train_model(epochs: int, visual: bool, size: int = 10):
     await asyncio.sleep(0.1)
 
     for epoch in range(epochs):
-        m_length, m_steps = await run_epoch(visual, display, table)
+        m_length, m_steps = await run_epoch(visual, display, table, board_size)
         max_length = max(max_length, m_length)
         max_steps = max(max_steps, m_steps)
+
+    table.save_model(f"models/model_{epochs}_{board_size}.json")
 
     print(max_length, max_steps)

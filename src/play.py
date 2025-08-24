@@ -1,3 +1,4 @@
+import asyncio
 import dis
 from time import sleep
 
@@ -6,7 +7,13 @@ from .qtable_runner import QTableRunner, TrainState
 from .train_state import Direction, print_snake_vision
 
 
-def play(model, visual: bool, size: int = 10):
+async def start_display(display: GameGUI):
+    while True:
+        display.root.update()
+        await asyncio.sleep(0.01)
+
+
+async def play(model, visual: bool, board_size: int = 10):
     state = TrainState()
     table = QTableRunner()
 
@@ -18,8 +25,9 @@ def play(model, visual: bool, size: int = 10):
 
     display = GameGUI(10)
 
-    def run_step():
-        nonlocal last_move
+    display_task = asyncio.create_task(start_display(display))
+
+    while True:
         display.clear_all()
         for apple in state.green_apples:
             display.fill_cell(apple[0], apple[1], "green")
@@ -34,7 +42,7 @@ def play(model, visual: bool, size: int = 10):
             state.get_snake_vision(), state.snake_body[0], last_move
         )
 
-        print_snake_vision(state.get_snake_vision(), state.snake_body[0])
+        print_snake_vision(state.get_snake_vision(), state.snake_body[0], board_size)
 
         action = table.get_action(current_state)
         result = state.move_snake(Direction(action))
@@ -51,7 +59,5 @@ def play(model, visual: bool, size: int = 10):
 
         table.set_reward(current_state, next_values, action, reward, need_stop)
 
-        display.root.after(100, run_step)
-
-    display.root.after(100, run_step)
-    display.run()
+        if visual:
+            await asyncio.sleep(0.1)

@@ -21,7 +21,7 @@ async def main():
     play_parser.add_argument(
         "--visual", action="store_true", help="Enable visual mode during play"
     )
-    train_parser.add_argument("--size", type=int, help="Size of the board")
+    play_parser.add_argument("--size", type=int, help="Size of the board")
     play_parser.add_argument(
         "model", type=argparse.FileType("r"), help="Model to be loaded"
     )
@@ -31,9 +31,9 @@ async def main():
 
     match args.command:
         case "train":
-            await train_model(args.sessions, args.visual, args.size)
+            await train_model(args.sessions, args.visual, args.size or 10)
         case "play":
-            play(args.model, args.visual, args.size)
+            play(args.model, args.visual, args.size or 10)
 
 
 if __name__ == "__main__":
