@@ -1,30 +1,25 @@
 import dis
 from time import sleep
 
-from .gui import GameGUI
+from .gui import GameGUI, get_gradient_color
 from .qtable_runner import QTableRunner, TrainState
 from .train_state import Direction, print_snake_vision
 
 
-def get_gradient_color(index: int, max: int) -> str:
-    ratio = index / max
-    red = int(255 * (1 - ratio))
-    green = int(255 * ratio)
-    blue = int(255 * ratio)
-    return f"#{red:02x}{green:02x}{blue:02x}"
-
-
-def play(model, visual: bool):
+def play(model, visual: bool, size: int = 10):
     state = TrainState()
     table = QTableRunner()
 
     table.load_model(model)
     table.exploration_prob = 0
-    table.learning_rate = 0.1
+    table.explore_unseen = False
+    # table.learning_rate = 0.2
+    last_move = 0
 
     display = GameGUI(10)
 
     def run_step():
+        nonlocal last_move
         display.clear_all()
         for apple in state.green_apples:
             display.fill_cell(apple[0], apple[1], "green")
@@ -36,13 +31,14 @@ def play(model, visual: bool):
             )
 
         current_state = table.compress_vision(
-            state.get_snake_vision(), state.snake_body[0]
+            state.get_snake_vision(), state.snake_body[0], last_move
         )
 
         print_snake_vision(state.get_snake_vision(), state.snake_body[0])
 
         action = table.get_action(current_state)
         result = state.move_snake(Direction(action))
+        last_move = action
 
         need_stop, reward = table.process_result(state, result)
         if need_stop:
@@ -50,7 +46,7 @@ def play(model, visual: bool):
             return
 
         next_values = table.compress_vision(
-            state.get_snake_vision(), state.snake_body[0]
+            state.get_snake_vision(), state.snake_body[0], last_move
         )
 
         table.set_reward(current_state, next_values, action, reward, need_stop)

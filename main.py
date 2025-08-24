@@ -1,9 +1,10 @@
 import argparse
 from src.play import play
 from src.train import train_model
+import asyncio
 
 
-def main():
+async def main():
     parser = argparse.ArgumentParser(description="Learn2Slither CLI")
     subparsers = parser.add_subparsers(dest="command", required=True)
 
@@ -11,6 +12,7 @@ def main():
     train_parser.add_argument(
         "--sessions", type=int, required=True, help="Number of training sessions"
     )
+    train_parser.add_argument("--size", type=int, help="Size of the board")
     train_parser.add_argument(
         "--visual", action="store_true", help="Enable visual mode during training"
     )
@@ -19,7 +21,7 @@ def main():
     play_parser.add_argument(
         "--visual", action="store_true", help="Enable visual mode during play"
     )
-
+    train_parser.add_argument("--size", type=int, help="Size of the board")
     play_parser.add_argument(
         "model", type=argparse.FileType("r"), help="Model to be loaded"
     )
@@ -29,10 +31,10 @@ def main():
 
     match args.command:
         case "train":
-            train_model(args.sessions, args.visual)
+            await train_model(args.sessions, args.visual, args.size)
         case "play":
-            play(args.model, args.visual)
+            play(args.model, args.visual, args.size)
 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())

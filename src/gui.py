@@ -2,6 +2,14 @@ import tkinter as tk
 from tkinter import Canvas
 
 
+def get_gradient_color(index: int, max: int) -> str:
+    ratio = index / max
+    red = int(255 * (1 - ratio))
+    green = int(255 * ratio)
+    blue = int(255 * ratio)
+    return f"#{red:02x}{green:02x}{blue:02x}"
+
+
 class GameGUI:
     def __init__(self, size=10):
         self.size = size

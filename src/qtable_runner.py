@@ -9,9 +9,10 @@ from .train_state import BoardPiece, TrainState, Direction
 class QTableRunner:
     def __init__(self, len=3):
         self.Q_Table = {}
-        self.exploration_prob = 0.05
+        self.exploration_prob = 0.1
         self.learning_rate = 0.7
         self.discount_factor = 0.8
+        self.explore_unseen = True
 
     def save_model(self, filename: str):
         with open(filename, "w") as f:
@@ -54,7 +55,7 @@ class QTableRunner:
         weights = self.get_weights(state)
         sorted_options = np.argsort(weights)
 
-        if 0.0 in weights:
+        if 0.0 in weights and self.explore_unseen:
             action = np.where(weights == 0.0)[0][0]
         elif np.random.rand() < self.exploration_prob:
             action = sorted_options[randint(1, 2)]
@@ -95,7 +96,9 @@ class QTableRunner:
 
         self.Q_Table[rotated_state][action] = score
 
-    def compress_vision(self, vision: List[List[BoardPiece]], pos: Tuple[int, int]):
+    def compress_vision(
+        self, vision: List[List[BoardPiece]], pos: Tuple[int, int], last_move: int
+    ):
         def get_distance(
             vision: List[List[BoardPiece]],
             direction: int,
@@ -128,7 +131,7 @@ class QTableRunner:
             (-1, False),  # left
         ]
 
-        data = []
+        data = [last_move]
 
         for direction, is_vertical in directions:
             dir_score = min(
@@ -173,5 +176,5 @@ class QTableRunner:
                     need_stop = True
                     reward = -10
             case BoardPiece.EMPTY:
-                reward = -0.2
+                reward = -0.1
         return need_stop, reward
