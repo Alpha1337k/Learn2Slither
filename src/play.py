@@ -1,10 +1,15 @@
 import asyncio
 import dis
 from time import sleep
+from xmlrpc.client import boolean
+
+from pydantic import ConfigDict, validate_call
 
 from .gui import GameGUI, get_gradient_color
 from .qtable_runner import QTableRunner, TrainState
 from .train_state import Direction, print_snake_vision
+
+model_config = ConfigDict(arbitrary_types_allowed=True)
 
 
 async def start_display(display: GameGUI):
@@ -13,7 +18,8 @@ async def start_display(display: GameGUI):
         await asyncio.sleep(0.01)
 
 
-async def play(model, visual: bool, board_size: int = 10):
+@validate_call(config=model_config)
+async def play(model, visual: bool, board_size: int, dont_learn: boolean):
     state = TrainState(board_size)
     table = QTableRunner()
 
@@ -59,7 +65,8 @@ async def play(model, visual: bool, board_size: int = 10):
             state.get_snake_vision(), state.snake_body[0], last_move
         )
 
-        table.set_reward(current_state, next_values, action, reward, need_stop)
+        if not dont_learn:
+            table.set_reward(current_state, next_values, action, reward, need_stop)
 
         if visual:
             await asyncio.sleep(0.1)

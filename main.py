@@ -26,6 +26,12 @@ async def main():
     play_parser.add_argument(
         "model", type=argparse.FileType("r"), help="Model to be loaded"
     )
+    play_parser.add_argument(
+        "--dont-learn",
+        action="store_true",
+        default=False,
+        help="Dont let the model learn midst game.",
+    )
 
     args = parser.parse_args()
     print(args)
@@ -34,7 +40,7 @@ async def main():
         case "train":
             await train_model(args.sessions, args.visual, args.size or 10)
         case "play":
-            await play(args.model, args.visual, args.size or 10)
+            await play(args.model, args.visual, args.size or 10, args.dont_learn)
 
 
 if __name__ == "__main__":
